@@ -1,34 +1,29 @@
-CXX=g++
-CXXFLAGS=-Wall -pipe -std=c++17
-GLSLC=glslc
-GLSLFLAGS=
-LDFLAGS=$(shell pkg-config --libs vulkan) $(shell pkg-config --libs /usr/local/lib/pkgconfig/glfw3.pc)
-SRC=$(wildcard *.cpp)
-OBJ=$(SRC:.cpp=.o)
-SHADERSRC=$(wildcard *.glsl)
-SHADEROBJ=$(SHADERSRC:.glsl=.spv)
-OUT=VulkanTest
+VULKAN_SDK_PATH = ~/vulkansdk
+CFLAGS = -std=c++17 -I. -I$(VULKAN_SDK_PATH)/include
+LDFLAGS = -L$(VULKAN_SDK_PATH)/lib `pkg-config --static --libs /usr/local/lib/pkgconfig/glfw3.pc` -lvulkan
 
-.PHONY: all debug release run clean
+vertsrc = $(shell find ./shaders -type f -name "*.vert")
+vertobj = $(patsubst %.vert, %.vert.spv, $(vertsrc))
+fragsrc = $(shell find ./shaders -type f -name "*.frag")
+fragobj = $(patsubst %.frag, %.frag.spv, $(fragsrc))
 
-all: debug
+TARGET = ./a.out
+$(TARGET): $(vertobj) $(fragobj)
+$(TARGET): *.cpp  *.hpp
 
-debug:   CXXFLAGS += -ggdb
-release: CXXFLAGS += -O2 -DNDEBUG
+%.spv: %
+	$(GLSLC) $< -o $@
 
-debug release: $(OUT) $(SHADEROBJ)
+.PHONY: test clean
 
-$(OUT): $(OBJ)
-	$(CXX) $(CXXFLAGS) $(OBJ) $(LDFLAGS) -o $@
-
-%.vert.spv: %.vert.glsl
-	$(GLSLC) $(GLSLFLAGS) -fshader-stage=vert $< -o $@
-
-%.frag.spv: %.frag.glsl
-	$(GLSLC) $(GLSLFLAGS) -fshader-stage=frag $< -o $@
-
-run: all
-	./$(OUT)
+test: ./a.out
+	./a.out
 
 clean:
-	rm -f $(OBJ) $(SHADEROBJ) $(OUT)
+	rm -f a.out
+	rm -f *.spv
+	
+
+a.out: *.cpp *.hpp
+	g++ $(CFLAGS) -o a.out *.cpp $(LDFLAGS)
+ 
